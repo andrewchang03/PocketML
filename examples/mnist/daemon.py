@@ -1,22 +1,20 @@
-# import requests
 import asyncio
 import time
 import logging
-import threading
 import multiprocessing
 import requests
 
-async def get_change():
-    while True:
-        res = await requests.get('http://10.48.85.83:8000/api/v1/jobs/<job_id>/get_change')
+from enum import Enum
 
-# async def create_new_job():
-#     while True:
-#         pass
+class Status(Enum):
+    RUNNING = 0
+    STOPPED = 1
+    PAUSED = 2
 
-# async def send_update_data():
-#     while True:
-#         pass
+def authenticate(token):
+    session = requests.Session()
+    session.headers.update({'Authorization': f'Bearer {token}'})
+    response = requests.get(f'{api_url}/api/v1/users/get_me')
 
 class Daemon:
     def __init__(self, train):
@@ -32,12 +30,13 @@ class Daemon:
             'lr': 1.0,
             'log_interval': 10
         }
+        self.train_status = Status.RUNNING
 
         event_loop = asyncio.get_event_loop()
 
         try:
-            self.start_training()
-            # asyncio.ensure_future(self.start_training())
+            if self.train_status == Status.RUNNING:
+                self.start_training()
             asyncio.ensure_future(self.stop_training())
             event_loop.run_forever()
         finally:
@@ -53,18 +52,18 @@ class Daemon:
             daemon=True
         )
 
-        payload = {
-            "name": "thailand", 
-            "wandb": False,
-            "wandb_link": "",
-            "start_time": 1,
-            "config": self.train_config,
-            "cluster_name": "local",
-            "total_epoch": 14,
-        }
+        # payload = {
+        #     "name": "thailand", 
+        #     "wandb": False,
+        #     "wandb_link": "",
+        #     "start_time": 1,
+        #     "config": self.train_config,
+        #     "cluster_name": "local",
+        #     "total_epoch": 14,
+        # }
 
-        res = requests.post('http://10.48.85.83:8000/api/v1/jobs/new_job', json=payload)
-        print(res.text)
+        # res = requests.post('http://10.48.85.83:8000/api/v1/jobs/new_job', json=payload)
+        # print(res.text)
 
         # start training process
         logging.info("Starting training")
@@ -75,3 +74,8 @@ class Daemon:
             await asyncio.sleep(5)
             if self.train_process:
                 self.train_process.terminate()
+
+    async def get_change(self):
+        while True:
+            # res = await requests.get('http://10.48.85.83:8000/api/v1/jobs/<job_id>/get_change')
+            self.train_process.terminate()
