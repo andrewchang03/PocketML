@@ -3,6 +3,7 @@ import asyncio
 import time
 import logging
 import threading
+import multiprocessing
 
 config = {
     'batch_size': 64,
@@ -11,48 +12,30 @@ config = {
     'log_interval': 10
 }
 
-# async def api_response():
-#     while True:
-#         await signal from api server
-#         if run:
-#             # start a subprocess to execute python file in paths
-#             pass
-#         elif stop:
-#             pass
-#         elif resume:
-#             pass
-#         # also need to think about whether there are new configs
-
 def init(train):
-    # requests.post() # post to api server that project is live and running
-    # # on 
-    # # expected params: PocketML username, cluster name
-
-    # configure logging output
+    # basic logging configurations
     format = "%(asctime)s: %(message)s"
     logging.basicConfig(format=format, level=logging.INFO, datefmt="%H:%M:%S")
 
-    logging.info("Creating training thread")
-    train_thread = threading.Thread(target=train, args=(config,), daemon=True)
+    # puts the training function into a process
+    logging.info("Creating training process")
+    train_process = multiprocessing.Process(target=train, args=(config,))
 
+    # start training process
     logging.info("Starting training")
-    train_thread.start()
+    train_process.start()
 
+    async def stop_training(train_process):
+        while True:
+            await asyncio.sleep(5)
+            train_process.terminate()
+
+    # event loop for api requests
     event_loop = asyncio.get_event_loop()
 
     try:
-        # asyncio.ensure_future(firstWorker())
-        # asyncio.ensure_future(secondWorker())
+        asyncio.ensure_future(stop_training(train_process))
         event_loop.run_forever()
     finally:
         print("Closing Loop")
         event_loop.close()
-
-    # logging.info("Main    : before running thread")
-    # x.start()
-    # logging.info("Main    : wait for the thread to finish")
-    # # x.join()
-    # while True:
-    #     time.sleep(1)
-    #     print("hello")
-    # logging.info("Main    : all done")
