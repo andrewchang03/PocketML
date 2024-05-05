@@ -10,6 +10,8 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.optim.lr_scheduler import StepLR
 
+import wandb
+
 import daemon
 
 class Net(nn.Module):
@@ -46,11 +48,12 @@ def train(config, model, device, train_loader, optimizer, epoch):
         loss = F.nll_loss(output, target)
         loss.backward()
         optimizer.step()
-        # wandb.log({"loss": loss})
+        wandb.log({"loss": loss})
         if batch_idx % config['log_interval'] == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
+        daemon.get_current_step(epoch * batch_idx * len(data))
 
 def test(model, device, test_loader):
     model.eval()
@@ -71,6 +74,13 @@ def test(model, device, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 def main(config):
+    wandb.login()
+
+    run = wandb.init(
+        project="mnist-daemon",
+        config=config
+    )
+
     torch.manual_seed(1)
 
     # configure devices
@@ -109,6 +119,9 @@ def main(config):
     model = Net().to(device)
     optimizer = optim.Adadelta(model.parameters(), lr=config['lr'])
 
+    print(wandb.run.name)
+    daemon.get_job_info(wandb.run.name, True, wandb.run.url)
+
     # train and test
     scheduler = StepLR(optimizer, step_size=1, gamma=0.7)
     for epoch in range(1, config['epochs'] + 1):
@@ -116,8 +129,8 @@ def main(config):
         test(model, device, test_loader)
         scheduler.step()
 
-    # torch.save(model.state_dict(), "mnist_cnn.pt")
+    wandb.finish()
 
 if __name__ == '__main__':
     daemon.init(main)
-    # main()
+    # job = daemon.Daemon(main)
