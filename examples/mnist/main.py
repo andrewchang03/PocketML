@@ -53,7 +53,7 @@ def train(config, model, device, train_loader, optimizer, epoch):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-        daemon.get_current_step(epoch * batch_idx * len(data))
+        daemon.set_current_step(epoch * batch_idx * len(data))
 
 def test(model, device, test_loader):
     model.eval()
@@ -105,7 +105,7 @@ def main(config):
     transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
-        ])
+    ])
     
     # load dataset
     dataset1 = datasets.MNIST('../data', train=True, download=True,
@@ -119,8 +119,8 @@ def main(config):
     model = Net().to(device)
     optimizer = optim.Adadelta(model.parameters(), lr=config['lr'])
 
-    print(wandb.run.name)
-    daemon.get_job_info(wandb.run.name, True, wandb.run.url)
+    daemon.set_job_info(wandb.run.name, True, wandb.run.url)
+    daemon.post_new_job()
 
     # train and test
     scheduler = StepLR(optimizer, step_size=1, gamma=0.7)
